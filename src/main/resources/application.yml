@@ -1,0 +1,79 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: loan-api-gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          default-filters:
+            - AddResponseHeader=X-Content-Type-Options, nosniff
+            - AddResponseHeader=Referrer-Policy, strict-origin-when-cross-origin
+            - AddResponseHeader=Cache-Control, no-store
+          routes:
+            - id: kyc-service
+              uri: lb://KYC-SERVICE
+              predicates:
+                - Path=/api/v1/kyc/**
+            - id: loan-service
+              uri: lb://LOAN-SERVICE
+              predicates:
+                - Path=/api/v1/loans/**
+            - id: customer-service
+              uri: lb://CUSTOMER-SERVICE
+              predicates:
+                - Path=/api/v1/customers/**
+
+app:
+  security:
+    issuer: http://localhost:8080
+    audience: loan-platform-api
+    access-token-ttl: 15
+    refresh-token-ttl: 7
+    private-key: classpath:keys/jwt-private.pem
+    public-key: classpath:keys/jwt-public.pem
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,threaddump
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+logging:
+  level:
+    org.springframework.security: INFO
+    org.springframework.cloud.gateway: INFO
+
+  file:
+    # 1. Active log filename
+    name: logs/application.log
+
+  logback:
+    rollingpolicy:
+      # 2. Fixed pattern (Added .%i token at the end)
+      file-name-pattern: ${spring.application.name}.%d{yyyy-MM-dd}.%i.log
+
+      # 3. Optional cleanup policies
+      max-history: 30        # Keeps logs for 30 days before deleting
+      max-file-size: 10MB    # Also rolls over if a single day's log exceeds 10MB
+
+# Uncomment when Eureka Server is introduced in a later milestone:
+# eureka:
+#   client:
+#     service-url:
+#       defaultZone: ${EUREKA_DEFAULT_ZONE:http://localhost:8761/eureka/}
+
+
+api :
+  baseUrl : https://jsonplaceholder.typicode.com
